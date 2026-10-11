@@ -63,7 +63,7 @@ export default function Card({
 }) {
   const [rank, , suit] = card ? card.split(" ") : [];
   const front = card
-    ? skin === "ancient" ? spriteStyle(cardSheet, ...SKIN_COORDS.ancient, scale) : spriteStyle(facesSheet, RANKS.indexOf(rank), SUITS.indexOf(suit), scale)
+    ? spriteStyle(facesSheet, RANKS.indexOf(rank), SUITS.indexOf(suit), scale)
     : undefined;
 
   return (
