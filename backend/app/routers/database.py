@@ -34,9 +34,14 @@ connection = os.getenv("CONNECTION")
 if not connection:
     raise RuntimeError("CONNECTION was not found in the project .env file")
 
-# SQLAlchemy's PostgreSQL dialect uses ``postgresql://`` (the older
-# ``postgres://`` spelling is still accepted in local environment files).
-connection_url = connection.replace("postgres", "timescaledb", 1)
+# TimescaleDB is PostgreSQL-compatible; map the two common PostgreSQL URL
+# schemes to the SQLAlchemy TimescaleDB dialect without mangling the suffix.
+if connection.startswith("postgresql://"):
+    connection_url = "timescaledb://" + connection.removeprefix("postgresql://")
+elif connection.startswith("postgres://"):
+    connection_url = "timescaledb://" + connection.removeprefix("postgres://")
+else:
+    connection_url = connection
 engine = create_engine(connection_url, pool_pre_ping=True)
 
 metadata = MetaData()

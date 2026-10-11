@@ -38,6 +38,14 @@ app.include_router(database_router)
 app.include_router(auth_router)
 app.include_router(blackjack_router)
 
+# Docker Compose's Next.js rewrites remove the public `/api` prefixes before
+# forwarding requests. Vercel Services can forward the original path instead,
+# so expose aliases that also accept those public paths directly.
+app.include_router(auth_router, prefix="/api")
+app.include_router(blackjack_router, prefix="/api/blackjack")
+app.include_router(database_router, prefix="/api/blackjack")
+app.include_router(database_router, prefix="/api")
+
 
 @app.on_event("startup")
 def initialize_database() -> None:
