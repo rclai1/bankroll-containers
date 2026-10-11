@@ -12,7 +12,7 @@ that is needed; no component code has to change.
 | `src/audio/useSound.ts` | `play(key)` and `useBgm(key)` helpers used by components. |
 | `src/components/MuteToggle.tsx` | Mute button (bottom-right); persists in localStorage. |
 
-Put audio files in `public/audio/` and reference them as `/audio/<file>`.
+Audio files live in `src/assets/sfx/`. Link one in `src/audio/soundConfig.ts` by adding it to the `sfx` list (the path must be a literal `new URL("../assets/sfx/<file>", import.meta.url)`) and using `sfx.<name>()` in the `SOUNDS` entry. Music (`bgm.*`) loops from the start when it ends.
 
 | Key (in `soundConfig.ts`) | Triggered from | Notes |
 | --- | --- | --- |
@@ -28,7 +28,9 @@ Put audio files in `public/audio/` and reference them as `/audio/<file>`.
 | `stand` | `Game.tsx` Stand button | |
 | `double` / `surrender` | `Game.tsx` Double Down / Surrender buttons | |
 | `nextRound` | `Game.tsx` "Next round" / "new game" button | |
-| `blackjack.natural` | `Game.tsx` `settleRound`, via `ROUND_EVENTS[...].sfx` | Natural blackjack (player, dealer, or both) |
+| `blackjack.player` / `blackjack.dealer` / `blackjack.both` | `Game.tsx` `settleRound`, via `ROUND_EVENTS[...].sfx` | Natural blackjack for the player, the dealer, or both |
+| `bust` | `Game.tsx` `settleRound`, via `ROUND_EVENTS.bust.sfx` | The player busts |
+| `gacha.nothing` / `gacha.dupe` / `gacha.hit` | `CardShop.tsx` `openCase()` | A pack with no skin / a skin you already own (refunded) / a new skin; plays when the result arrives, as the reveal pop-up opens |
 
 To add a new sound: add a key to `SOUNDS` in `soundConfig.ts`, then call
 `play("your.key")` where it should fire (or reference it from a `sfx` field in
@@ -40,7 +42,7 @@ To add a new sound: add a key to `SOUNDS` in `soundConfig.ts`, then call
 
 - `banner`: main text. **Natural blackjack copy is a placeholder** (`playerNatural`, `dealerNatural`, `bothNatural`; marked `TODO(message)`).
 - `subtitle`: optional smaller line under the banner (`null` = none).
-- `sfx`: a `SoundKey` played when the result appears (naturals use `blackjack.natural`; others `null`).
+- `sfx`: a `SoundKey` played when the result appears (naturals use `blackjack.player/dealer/both`, a bust uses `bust`; others `null`).
 - `effect`: `"natural"` enables the gold banner, screen flash and card glow.
 - `tone`: `win` / `loss` / `push` banner colour.
 

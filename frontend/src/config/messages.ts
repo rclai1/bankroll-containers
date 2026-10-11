@@ -33,13 +33,13 @@ export interface RoundEventDef {
 
 export const ROUND_EVENTS: Record<RoundEventKey, RoundEventDef> = {
   // TODO(message): final copy for natural blackjacks.
-  playerNatural: { banner: "Blackjack!", subtitle: null, sfx: "blackjack.natural", effect: "natural", tone: "win" },
-  dealerNatural: { banner: "Dealer Blackjack", subtitle: null, sfx: "blackjack.natural", effect: "natural", tone: "loss" },
-  bothNatural: { banner: "Double Blackjack", subtitle: null, sfx: "blackjack.natural", effect: "natural", tone: "push" },
+  playerNatural: { banner: "Blackjack!", subtitle: null, sfx: "blackjack.player", effect: "natural", tone: "win" },
+  dealerNatural: { banner: "Dealer Blackjack", subtitle: null, sfx: "blackjack.dealer", effect: "natural", tone: "loss" },
+  bothNatural: { banner: "Double Blackjack", subtitle: null, sfx: "blackjack.both", effect: "natural", tone: "push" },
   win: { banner: "You win!", subtitle: null, sfx: null, effect: "none", tone: "win" },
   loss: { banner: "You lose", subtitle: null, sfx: null, effect: "none", tone: "loss" },
   push: { banner: "Push", subtitle: null, sfx: null, effect: "none", tone: "push" },
-  bust: { banner: "Bust!", subtitle: null, sfx: null, effect: "none", tone: "loss" },
+  bust: { banner: "Bust!", subtitle: null, sfx: "bust", effect: "none", tone: "loss" },
   surrender: { banner: "Surrendered", subtitle: null, sfx: null, effect: "none", tone: "loss" },
 };
 

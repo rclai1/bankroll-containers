@@ -8,8 +8,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import APIRouter, Cookie, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import (
     Boolean,
@@ -29,16 +28,20 @@ from sqlalchemy import (
     create_engine,
     text,
 )
-from .auth import get_token_user_id
 
 load_dotenv(Path(__file__).resolve().parents[3] / ".env")
 connection = os.getenv("CONNECTION")
 if not connection:
     raise RuntimeError("CONNECTION was not found in the project .env file")
 
-# SQLAlchemy's PostgreSQL dialect uses ``postgresql://`` (the older
-# ``postgres://`` spelling is still accepted in local environment files).
-connection_url = connection.replace("postgres", "timescaledb", 1)
+# TimescaleDB is PostgreSQL-compatible; map the two common PostgreSQL URL
+# schemes to the SQLAlchemy TimescaleDB dialect without mangling the suffix.
+if connection.startswith("postgresql://"):
+    connection_url = "timescaledb://" + connection.removeprefix("postgresql://")
+elif connection.startswith("postgres://"):
+    connection_url = "timescaledb://" + connection.removeprefix("postgres://")
+else:
+    connection_url = connection
 engine = create_engine(connection_url, pool_pre_ping=True)
 
 metadata = MetaData()
@@ -94,7 +97,6 @@ auth_sessions = Table(
 )
 
 router = APIRouter()
-bearer_scheme = HTTPBearer(auto_error=False)
 
 
 class CreateHighScoreRequest(BaseModel):
@@ -118,19 +120,17 @@ RARE_SKINS = CARD_SKINS[4:]
 SHOP_COST = 10
 
 
-def _shop_user(connection, token: str | None, *, lock: bool = False):
-    user_id = get_token_user_id(token) if token else None
-    if user_id is None:
+def _shop_user(connection, session_token: str | None, *, lock: bool = False):
+    if not session_token:
         raise HTTPException(status_code=401, detail="Sign in to use the card shop")
-    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    token_hash = hashlib.sha256(session_token.encode()).hexdigest()
     suffix = " FOR UPDATE" if lock else ""
     user = connection.execute(text(
         "SELECT users.id, users.balance, users.equipped_skin, "
         + ", ".join(f'users."{name}"' for name in CARD_SKINS)
         + " FROM users JOIN auth_sessions ON users.id = auth_sessions.user_id "
-        "WHERE auth_sessions.token_hash = :token_hash AND auth_sessions.expires_at > :now "
-        "AND users.id = :user_id" + suffix
-    ), {"token_hash": token_hash, "now": datetime.now(timezone.utc), "user_id": user_id}).mappings().one_or_none()
+        "WHERE auth_sessions.token_hash = :token_hash AND auth_sessions.expires_at > :now" + suffix
+    ), {"token_hash": token_hash, "now": datetime.now(timezone.utc)}).mappings().one_or_none()
     if user is None:
         raise HTTPException(status_code=401, detail="Sign in to use the card shop")
     return user
@@ -142,17 +142,15 @@ def _shop_payload(user):
 
 
 @router.get("/shop")
-def get_shop(credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)):
-    token = credentials.credentials if credentials else None
+def get_shop(bankroll_session: str | None = Cookie(default=None)):
     with engine.connect() as connection:
-        return _shop_payload(_shop_user(connection, token))
+        return _shop_payload(_shop_user(connection, bankroll_session))
 
 
 @router.post("/shop/roll")
-def roll_shop(credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)):
-    token = credentials.credentials if credentials else None
+def roll_shop(bankroll_session: str | None = Cookie(default=None)):
     with engine.begin() as connection:
-        user = _shop_user(connection, token, lock=True)
+        user = _shop_user(connection, bankroll_session, lock=True)
         if user["balance"] < SHOP_COST:
             raise HTTPException(status_code=409, detail="Not enough aircoin")
         result = random.choices(("nothing", "common", "rare"), weights=(80, 15, 5), k=1)[0]
@@ -164,7 +162,7 @@ def roll_shop(credentials: HTTPAuthorizationCredentials | None = Depends(bearer_
             + (f', "{reward}" = 1' if reward else "")
             + " WHERE id = :user_id"
         ), {"cost": SHOP_COST, "refund": refund, "user_id": user["id"]})
-        updated = _shop_user(connection, token)
+        updated = _shop_user(connection, bankroll_session)
         return {**_shop_payload(updated), "result": result, "reward": reward,
                 "duplicate": duplicate, "refund": refund}
 
@@ -174,36 +172,36 @@ class EquipSkinRequest(BaseModel):
 
 
 @router.post("/shop/equip")
-def equip_shop_skin(
-    request: EquipSkinRequest,
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
-):
-    token = credentials.credentials if credentials else None
+def equip_shop_skin(request: EquipSkinRequest, bankroll_session: str | None = Cookie(default=None)):
     if request.skin != "default" and request.skin not in CARD_SKINS:
         raise HTTPException(status_code=400, detail="Unknown card skin")
     with engine.begin() as connection:
-        user = _shop_user(connection, token, lock=True)
+        user = _shop_user(connection, bankroll_session, lock=True)
         if request.skin != "default" and user[request.skin] != 1:
             raise HTTPException(status_code=403, detail="You do not own this card skin")
         connection.execute(text("UPDATE users SET equipped_skin = :skin WHERE id = :user_id"), {"skin": request.skin, "user_id": user["id"]})
-        updated = _shop_user(connection, token)
+        updated = _shop_user(connection, bankroll_session)
         return _shop_payload(updated)
 
 
 def _current_seed_reset(now: datetime) -> datetime:
-    """Return the current daily reset boundary in UTC."""
+    """Return the current daily reset boundary: 09:00 UTC (4:00 AM EST, 5:00 AM during daylight saving)."""
     reset = now.astimezone(timezone.utc).replace(
-        hour=3, minute=0, second=0, microsecond=0
+        hour=9, minute=0, second=0, microsecond=0
     )
     if now.astimezone(timezone.utc) < reset:
         reset -= timedelta(days=1)
     return reset
 
 
-@router.get("/getSeed")
 @router.get("/seed")
 def get_seed():
-    """Return the singleton seed for the current UTC day starting at 03:00."""
+    """Return the singleton seed for the current daily period.
+
+    A period starts at 09:00 UTC (4:00 AM EST; 5:00 AM during daylight saving).
+    The first call after a reset creates a new seed, resets every player's daily
+    progress, and clears the leaderboard (``high_scores``).
+    """
     now = datetime.now(timezone.utc)
     reset_at = _current_seed_reset(now)
     with engine.begin() as connection:
@@ -213,7 +211,7 @@ def get_seed():
                    VALUES (1, :seed, :created_at)
                    ON CONFLICT (id) DO UPDATE
                    SET seed = EXCLUDED.seed, created_at = EXCLUDED.created_at
-                   WHERE seeds.created_at < :reset_at
+                   WHERE seeds.created_at <> :reset_at
                    RETURNING seed, created_at"""
             ),
             {
@@ -228,8 +226,9 @@ def get_seed():
                 text("SELECT seed, created_at FROM seeds WHERE id = 1")
             ).mappings().one()
         else:
-            # Clear the daily stop flag only when this call creates a new seed.
+            # Reset daily progress and leaderboard only when this call creates a new seed.
             connection.execute(text("UPDATE games SET cash_out = FALSE, curr_money = 100"))
+            connection.execute(text("DELETE FROM high_scores"))
         return dict(row)
 
 

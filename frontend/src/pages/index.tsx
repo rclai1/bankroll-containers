@@ -7,7 +7,6 @@ import type { ModeId } from "@/config/modes";
 import type { CpuCount } from "@/config/layout";
 import CardShop from "@/components/CardShop";
 import type { CardSkin } from "@/components/Card";
-import { apiFetch, clearAccessToken, getAccessToken } from "@/lib/api";
 
 export default function Home() {
   const [screen, setScreen] = useState<"menu" | "game" | "shop">("menu");
@@ -19,21 +18,16 @@ export default function Home() {
 
   useEffect(() => {
     let active = true;
-    if (!getAccessToken()) {
-      setAuthReady(true);
-      return () => { active = false; };
-    }
-    apiFetch("/api/auth/session")
+    fetch("/api/auth/session")
       .then(async (response) => {
         if (!response.ok) throw new Error("Could not restore session");
         return response.json();
       })
       .then(async (session: AuthUser | null) => {
         if (active) setUser(session);
-        if (!session) clearAccessToken();
         if (session) {
           try {
-            const shop = await apiFetch("/api/shop").then((r) => r.json());
+            const shop = await fetch("/api/shop").then((r) => r.json());
             if (active && shop.equipped_skin) setEquippedSkin(shop.equipped_skin);
           } catch {
             // Keep the account session if loading the equipped skin fails.
@@ -51,11 +45,10 @@ export default function Home() {
 
   async function signOut() {
     try {
-      await apiFetch("/api/auth/logout", { method: "POST" });
+      await fetch("/api/auth/logout", { method: "POST" });
     } catch {
       // Clear the local UI even if the server cannot be reached.
     } finally {
-      clearAccessToken();
       setUser(null);
       setEquippedSkin("default");
       setScreen("menu");

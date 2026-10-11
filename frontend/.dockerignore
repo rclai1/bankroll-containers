@@ -1,8 +1,5 @@
-node_modules
-.next
-.vercel
-.git
+node_modules/
+.next/
+.vercel/
 .env*
 npm-debug.log*
-README.md
-docs

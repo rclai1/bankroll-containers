@@ -23,7 +23,6 @@ import {
 } from "@/lib/blackjackApi";
 import { BET_PRESETS, minBetFor, presetAmount } from "@/config/betting";
 import { score } from "@/lib/scoring";
-import { apiFetch } from "@/lib/api";
 import { betSteps, cpuTurnSteps, hitSteps, standSteps, type StepApi } from "@/lib/roundSteps";
 import { INITIAL_SHOWN, useRoundTimeline } from "@/hooks/useRoundTimeline";
 import { TIMING } from "@/config/timing";
@@ -161,7 +160,7 @@ export default function Game({
     setEVExplanationError(null);
     setLoadingEVExplanation(true);
     try {
-      const response = await apiFetch("/api/blackjack/explain-ev", {
+      const response = await fetch("/api/blackjack/explain-ev", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

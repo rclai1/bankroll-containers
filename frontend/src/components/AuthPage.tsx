@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from "react";
-import { saveAccessToken } from "@/lib/api";
 
 export interface AuthUser {
   id: number;
@@ -33,10 +32,6 @@ export default function AuthPage({ onAuthenticated }: { onAuthenticated: (user: 
         throw new Error(detail);
       }
 
-      if (typeof result.access_token !== "string") {
-        throw new Error("The server did not return an access token. Please try again.");
-      }
-      saveAccessToken(result.access_token);
       onAuthenticated({ id: result.id, username: result.username });
     } catch (requestError) {
       setError(requestError instanceof Error && requestError.message === "Failed to fetch"

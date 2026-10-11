@@ -6,6 +6,7 @@ const apiOrigin =
 
 const nextConfig: NextConfig = {
   /* config options here */
+  output: "standalone",
   reactCompiler: true,
   turbopack: {
     rules: {

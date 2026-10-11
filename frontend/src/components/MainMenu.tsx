@@ -55,7 +55,7 @@ export default function MainMenu({
           <span>Playing as <strong>{username}</strong></span>
           <button className="btn-link" onClick={onSignOut}>Sign out</button>
         </div>
-        <h1 className="title-text text-5xl sm:text-7xl">title pending</h1>
+        <h1 className="title-text text-5xl sm:text-7xl">Bankroll</h1>
         {tab === "play" ? (
         <div className="flex w-72 gap-3" aria-label="Main menu actions">
             <button className="btn btn-green flex-1 px-2" onClick={() => {

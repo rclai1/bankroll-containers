@@ -1,4 +1,5 @@
-"""Tests for the blackjack API. Run from backend/: ``python -m unittest test_blackjack``.
+"""Tests for the blackjack API. Run from the project root: ``python -m unittest backend.test_blackjack``
+(or from backend/: ``python -m unittest test_blackjack``).
 
 Route functions are called directly (no HTTP client needed) and the deck is
 rigged: ``rig(...)`` lists cards in draw order. Deal order is each seated
@@ -14,7 +15,8 @@ import types
 import unittest
 from unittest import mock
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# The app lives in the ``backend.app`` package, so the project root (the folder above backend/) must be importable.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import backend.app.routers.blackjack_api as bj  # noqa: E402
 import backend.app.routers.cpu_agents as cpu_agents  # noqa: E402

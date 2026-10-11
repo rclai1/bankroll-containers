@@ -1,12 +1,14 @@
 /**
- * SOUND FRAMEWORK: the one file to edit when sound assets exist.
+ * SOUND FRAMEWORK: the one file to edit to change which sound plays when.
  *
- * Put audio files in `public/audio/` and set `src` to the URL path, e.g.
- * `src: "/audio/bubble-pop.mp3"`. `src: null` means "no sound yet" and every
- * call to play it is a silent no-op. `volume` is 0..1.
+ * Audio files live in `src/assets/sfx/`. Link one with `sfx("<file name>")`
+ * below (the file name must be written out literally so the bundler can find
+ * and ship it). `null` means "no sound" and every call to play it is a silent
+ * no-op. `volume` is 0..1.
  *
- * Keys starting with `bgm.` loop and are played through `playBgm`; all others
- * are one-shots. See docs/FRAMEWORKS.md for where each key is triggered.
+ * Keys starting with `bgm.` loop (from the start again when the file ends) and
+ * are played through `playBgm`; all others are one-shots. See
+ * docs/FRAMEWORKS.md for where each key is triggered.
  */
 
 export interface SoundDef {
@@ -14,16 +16,40 @@ export interface SoundDef {
   volume: number;
 }
 
-const sound = (volume = 0.7): SoundDef => ({ src: null, volume });
+const sound = (src: string | null = null, volume = 0.7): SoundDef => ({ src, volume });
+
+// `new URL("<literal path>", import.meta.url)` is how Next bundles a file
+// from src/ and gives back its public URL. One helper call per file, so the
+// path has to stay a string literal in each line below.
+const sfx = {
+  are_you_sure: () => new URL("../assets/sfx/are_you_sure.mp3", import.meta.url).href,
+  bubble_pop: () => new URL("../assets/sfx/bubble_pop.mp3", import.meta.url).href,
+  dire_dire_docks: () => new URL("../assets/sfx/dire_dire_docks.mp3", import.meta.url).href,
+  fortnite_knocked: () => new URL("../assets/sfx/fortnite-knocked-made-with-Voicemod.mp3", import.meta.url).href,
+  frutiger: () => new URL("../assets/sfx/frutiger.mp3", import.meta.url).href,
+  lmk: () => new URL("../assets/sfx/lmk.mp3", import.meta.url).href,
+  metal_pipe: () => new URL("../assets/sfx/metal_pipe.mp3", import.meta.url).href,
+  mii_maker: () => new URL("../assets/sfx/mii_maker_wiiU.mp3", import.meta.url).href,
+  monkeys: () => new URL("../assets/sfx/monkeys.mp3", import.meta.url).href,
+  playing_card1: () => new URL("../assets/sfx/playing_card1.mp3", import.meta.url).href,
+  playing_card2: () => new URL("../assets/sfx/playing_card2.mp3", import.meta.url).href,
+  sad_trumpet: () => new URL("../assets/sfx/sad-trumpet.mp3", import.meta.url).href,
+  siu: () => new URL("../assets/sfx/siu.mp3", import.meta.url).href,
+  wii_click: () => new URL("../assets/sfx/wii_click.mp3", import.meta.url).href,
+  wii_party: () => new URL("../assets/sfx/wii_party.mp3", import.meta.url).href,
+  xp_shutdown: () => new URL("../assets/sfx/xp_shutdown.mp3", import.meta.url).href,
+  xp_startup: () => new URL("../assets/sfx/xp_startup.mp3", import.meta.url).href,
+  yippee: () => new URL("../assets/sfx/yippee.mp3", import.meta.url).href,
+} as const;
 
 export const SOUNDS = {
   // --- Background music (one per screen/mode; mapping lives in config/modes.ts) ---
-  "bgm.menu": sound(0.4),
-  "bgm.regular": sound(0.4),
-  "bgm.daily": sound(0.4),
-  "bgm.chaos": sound(0.4),
-  "bgm.learning": sound(0.4),
-  "bgm.gambling": sound(0.4),
+  "bgm.menu": sound(sfx.wii_party(), 0.4),
+  "bgm.regular": sound(sfx.mii_maker(), 0.4),
+  "bgm.daily": sound(sfx.dire_dire_docks(), 0.4),
+  "bgm.chaos": sound(null, 0.4), // no file yet
+  "bgm.learning": sound(sfx.monkeys(), 0.4),
+  "bgm.gambling": sound(null, 0.4), // no file yet
 
   // --- Main menu ---
   "menu.daily": sound(),
@@ -31,12 +57,13 @@ export const SOUNDS = {
   "menu.chaos": sound(),
   "menu.learning": sound(),
   "menu.gambling": sound(),
-  "menu.bubblePop": sound(),
+  "menu.bubblePop": sound(sfx.bubble_pop()),
 
   // --- Cards / money (triggered from the round timeline) ---
-  "card.deal": sound(),
-  "card.flip": sound(), // not in the original list; used by the face-down -> face-up flip
-  "money.withdraw": sound(), // not in the original list; played when the bet leaves the bankroll
+  "card.deal": sound(sfx.playing_card2()),
+  "card.flip": sound(sfx.playing_card1()),
+  // TODO(sfx): src/assets/sfx/money.mp3 is not in the folder yet; add it with sfx() above.
+  "money.withdraw": sound(),
 
   // --- Deal button: variant picked by selectDealSound (bet size) ---
   "deal.low": sound(),
@@ -44,18 +71,27 @@ export const SOUNDS = {
   "deal.high": sound(),
 
   // --- Hit button: variant picked by selectHitSound (bet size / hand) ---
-  "hit.default": sound(),
-  "hit.highBet": sound(),
-  "hit.hardHand": sound(),
+  "hit.default": sound(sfx.frutiger()),
+  "hit.highBet": sound(sfx.are_you_sure()),
+  "hit.hardHand": sound(sfx.are_you_sure()),
 
   // --- Other buttons ---
-  stand: sound(),
-  double: sound(), // Double Down button
-  surrender: sound(), // Surrender button
-  nextRound: sound(),
+  stand: sound(sfx.wii_click()),
+  double: sound(sfx.metal_pipe()), // Double Down button
+  surrender: sound(sfx.xp_shutdown()), // Surrender button
+  nextRound: sound(sfx.xp_startup()),
 
-  // --- Special round events (see config/messages.ts) ---
-  "blackjack.natural": sound(0.9),
+  // --- Round results (see config/messages.ts) ---
+  bust: sound(sfx.lmk()),
+  // TODO(sfx): fah_short.mp3 and fah_long.mp3 are not in the folder yet.
+  "blackjack.dealer": sound(), // dealer natural blackjack (fah_short)
+  "blackjack.player": sound(sfx.siu(), 0.9), // player natural blackjack
+  "blackjack.both": sound(), // both have a natural (fah_long)
+
+  // --- Gacha / card shop (not built yet; sounds are ready for it) ---
+  "gacha.nothing": sound(sfx.sad_trumpet()),
+  "gacha.dupe": sound(sfx.fortnite_knocked()),
+  "gacha.hit": sound(sfx.yippee()),
 } satisfies Record<string, SoundDef>;
 
 export type SoundKey = keyof typeof SOUNDS;

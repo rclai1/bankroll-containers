@@ -55,6 +55,11 @@ function applyBgm() {
     if (def?.src) {
       const el = new Audio(def.src);
       el.loop = true;
+      // `loop` already restarts the file; this is a fallback for any player that reports "ended" anyway.
+      el.addEventListener("ended", () => {
+        el.currentTime = 0;
+        if (!muted) void el.play().catch(() => {});
+      });
       el.volume = 0;
       bgmEl = el;
       if (!muted) {

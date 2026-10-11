@@ -1,4 +1,10 @@
-"""Application entry point for the Bankroll API."""
+"""Application entry point for the Bankroll API.
+
+Run from the ``backend/`` folder (not from ``backend/app``), because this module
+uses package-relative imports::
+
+    uvicorn app.main:app --reload --port 8000
+"""
 
 import os
 
