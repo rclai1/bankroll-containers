@@ -39,6 +39,17 @@ function spriteStyle(
   };
 }
 
+function ancientFaceStyle(rank: string, suit: string, scale: number): CSSProperties {
+  const face = spriteStyle(facesSheet, RANKS.indexOf(rank), SUITS.indexOf(suit), scale);
+  const base = spriteStyle(cardSheet, ...SKIN_COORDS.ancient, scale);
+  return {
+    ...face,
+    backgroundImage: `${face.backgroundImage}, ${base.backgroundImage}`,
+    backgroundSize: `${face.backgroundSize}, ${base.backgroundSize}`,
+    backgroundPosition: `${face.backgroundPosition}, ${base.backgroundPosition}`,
+  };
+}
+
 export function EmptySlot({ scale = SCALE }: { scale?: number }) {
   return <div className="card-slot-empty" style={cardSize(scale)} />;
 }
@@ -63,7 +74,9 @@ export default function Card({
 }) {
   const [rank, , suit] = card ? card.split(" ") : [];
   const front = card
-    ? spriteStyle(facesSheet, RANKS.indexOf(rank), SUITS.indexOf(suit), scale)
+    ? skin === "ancient"
+      ? ancientFaceStyle(rank, suit, scale)
+      : spriteStyle(facesSheet, RANKS.indexOf(rank), SUITS.indexOf(suit), scale)
     : undefined;
 
   return (
